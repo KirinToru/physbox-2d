@@ -134,12 +134,4 @@ The generated HTML documentation will be placed in `docs/doxygen/html/`. Open `d
 ## License
 
 This project uses a **Source Available License**. See [LICENSE](LICENSE) for full details.
-
-- ✅ View and learn from the code
-- ✅ Personal/private use
-- ✅ Educational reference (with attribution)
-- ❌ Commercial use (requires permission)
-- ❌ Redistribution (requires permission)
-- ❌ Using assets in other projects (requires permission)
-
 This project uses the external library [SFML](https://www.sfml-dev.org/), which is licensed under the zlib/png license.
