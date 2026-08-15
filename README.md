@@ -1,7 +1,7 @@
 <p align="center">
   <img src="assets/logo.png" alt="Journey to the Clouds" height="100px"/>
 </p>
-<h1 align="center">PhysBox 2d</h1>
+<h1 align="center">PhysBox 2D</h1>
 <h3 align="center">A 2D Physics Sandbox</h3>
 <p align="center">
 <img src="https://img.shields.io/badge/C++-20-00599C?style=flat-square&logo=c%2B%2B">
@@ -10,7 +10,7 @@
 <a href="LICENSE"><img src="https://img.shields.io/badge/license-Source%20Available-informational?style=flat-square"/></a>
 </p>
 
-PhysBox is a 2D simulator game focusing on physics. Built entirely from scratch with C++ and SFML.
+PhysBox 2D is a two-dimensional simulator game focusing on physics. Built entirely from scratch with C++ and SFML.
 
 ### Contents
 
