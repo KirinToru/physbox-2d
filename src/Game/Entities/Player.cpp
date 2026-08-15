@@ -1,589 +1,154 @@
-﻿#include <Game/Entities/Player.hpp>
+#include <Game/Entities/Player.hpp>
 #include <Game/World/Map.hpp>
 #include <iostream>
+#include <cmath>
 
 Player::Player() : sprite(texture) {
   if (!texture.loadFromFile("assets/player/spritesheet.png")) {
     std::cerr << "Failed to load player texture!" << std::endl;
   }
   sprite.setTexture(texture, true);
-
   sprite.setTextureRect(sf::IntRect({0, 0}, {32, 32}));
-
-  // Set origin to bottom-center for proper positioning relative to hitbox
   sprite.setOrigin({16.f, 32.f});
 
   facingRight = true;
-
-  animState = AnimState::Idle;
-  currentFrame = 0;
-  animationTimer = 0.f;
-  animationSpeed = 0.1f; // Base speed for run animation
-  wasMoving = false;
-
-  shape.setFillColor(sf::Color(0, 0, 0, 0));
-  shape.setOutlineThickness(1.f);
-  shape.setOutlineColor(sf::Color::Green);
-  shape.setSize({30.f, 35.f});
-  shape.setPosition({100.f, 0.f}); // Start position
-
-  moveSpeed = 400.f;
-  acceleration = 1500.f;
-  friction = 1200.f;
-
-  gravity = 1000.f;
-  jumpStrength = 500.f;
-
-  // Wall mechanics
-  wallSlideSpeed = 150.f;
-  fastWallSlideSpeed = 400.f;
-  wallJumpForce = {350.f, 500.f};
-  isWallSliding = false;
-  wallDir = 0;
-
-  // Jump mechanics
-  jumpBufferTime = 0.1f;
-  jumpBufferTimer = 0.f;
-  bufferedJump = false;
-  coyoteTime = 0.1f;
-  coyoteTimer = 0.f;
-
-  // Dash
-  dashSpeed = 750.f;
-  dashDuration = 0.15f;
+  isGrounded = false;
+  
+  // Clear old dash stuff
+  dashSpeed = 0.f;
+  dashDuration = 0.f;
   dashTimer = 0.f;
-  dashCooldown = 0.5f;
+  dashCooldown = 0.f;
   dashCooldownTimer = 0.f;
   isDashing = false;
-  dashFreezeTimer = 0.f;
-  dashFreezeDuration = 0.07f; // 70ms freeze at dash start
-  hasAirDash = true;
-  hasAirJump = false;
-  isJumping = false;
-
-  currentMaxSpeed = moveSpeed;
-  speedDecay = 700.f;
-
-  velocity = {0.f, 0.f};
-  isGrounded = false;
+  hasAirDash = false;
 }
 
-void Player::update(float dt, const Map &map) {
-  // --- Timers ---
-  if (dashCooldownTimer > 0.f)
-    dashCooldownTimer -= dt;
+void Player::init(b2WorldId world, sf::Vector2f position, float P2M) {
+  mP2M = P2M;
+  mWorld = world;
+  
+  b2BodyDef bodyDef = b2DefaultBodyDef();
+  bodyDef.type = b2_dynamicBody;
+  bodyDef.position = {position.x / P2M, position.y / P2M};
+  bodyDef.motionLocks.angularZ = true; // Player shouldn't tip over
+  mBody = b2CreateBody(world, &bodyDef);
+  
+  // Use a box shape for the player (capsule causes jitter on flat ground)
+  b2Polygon playerBox = b2MakeRoundedBox(12.f / 2.f / P2M, 28.f / 2.f / P2M, 2.f / P2M);
+  
+  b2ShapeDef shapeDef = b2DefaultShapeDef();
+  shapeDef.density = 2.0f;
+  shapeDef.material.friction = 0.0f; // Zero friction to prevent wall climbing
+  shapeDef.material.restitution = 0.0f;
+  
+  b2CreatePolygonShape(mBody, &shapeDef, &playerBox);
+  
+  shape.setSize({14.f, 30.f});
+  shape.setOrigin({7.f, 15.f});
+}
 
-  if (jumpBufferTimer > 0.f)
-    jumpBufferTimer -= dt;
-
-  if (isGrounded) {
-    coyoteTimer = coyoteTime;
-    hasAirDash = true; // reset air dash
-    hasAirJump = true; // reset air jump
-  } else {
-    coyoteTimer -= dt;
-  }
-
-  // Gradually reduce max speed back to normal walk speed (momentum decay)
-  if (currentMaxSpeed > moveSpeed && !isDashing) {
-    // Air friction is slightly lower than ground friction for game feel
-    float currentDecay = isGrounded ? speedDecay : (speedDecay * 0.6f);
-    currentMaxSpeed -= currentDecay * dt;
-    if (currentMaxSpeed < moveSpeed)
-      currentMaxSpeed = moveSpeed;
-  }
-
-  // 1. Input Handling & Dynamic Speed (Acceleration/Friction)
+void Player::update(float dtSec) {
+  b2Vec2 velocity = b2Body_GetLinearVelocity(mBody);
+  
   bool left = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Left) ||
               sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A);
   bool right = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Right) ||
                sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D);
-  bool up = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Up) ||
-            sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W);
-  bool down = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Down) ||
-              sf::Keyboard::isKeyPressed(sf::Keyboard::Key::S);
-
   bool jumpPressed = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space);
-  bool dashPressed = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LShift);
-
-  // Buffer the jump input
-  bool jumpJustPressed = jumpPressed && !wasJumpPressed;
-  if (jumpJustPressed) {
-    jumpBufferTimer = jumpBufferTime;
-  }
-  wasJumpPressed = jumpPressed;
-
-  // Start Dash
-  if (dashPressed && !isDashing && dashCooldownTimer <= 0.f &&
-      (isGrounded || hasAirDash)) {
-    isDashing = true;
-    dashTimer = dashDuration;
-    dashFreezeTimer = dashFreezeDuration; // start freeze phase
-    dashCooldownTimer = dashCooldown;
-
-    // Zero velocity during freeze for that "hang" effect
-    velocity = {0.f, 0.f};
-
-    // Always consume dash charge when starting a dash
-    hasAirDash = false;
-
-    // Determine Dash Direction (4 cardinal directions only, vertical priority)
-    dashDirection = {0.f, 0.f};
-    if (up)
-      dashDirection.y = -1.f;
-    else if (down)
-      dashDirection.y = 1.f;
-    else if (left)
-      dashDirection.x = -1.f;
-    else if (right)
-      dashDirection.x = 1.f;
-
-    // Default to facing direction if no input
-    if (dashDirection.x == 0.f && dashDirection.y == 0.f) {
-      dashDirection.x = facingRight ? 1.f : -1.f;
-    }
-  }
-
-  // Handle Action States
-  if (isDashing) {
-    // Freeze phase: player hangs in place before launching
-    if (dashFreezeTimer > 0.f) {
-      dashFreezeTimer -= dt;
-      velocity = {0.f, 0.f}; // frozen in the air
-
-      // Allow direction change during freeze (dash direction buffer)
-      // Cardinal directions only, vertical priority
-      sf::Vector2f newDir = {0.f, 0.f};
-      if (up)
-        newDir.y = -1.f;
-      else if (down)
-        newDir.y = 1.f;
-      else if (left)
-        newDir.x = -1.f;
-      else if (right)
-        newDir.x = 1.f;
-
-      // Only update if player is pressing a direction
-      if (newDir.x != 0.f || newDir.y != 0.f) {
-        dashDirection = newDir;
-      }
-    } else {
-      // Active dash phase
-      dashTimer -= dt;
-      velocity = dashDirection * dashSpeed;
-
-      // Maintain momentum after dash
-      currentMaxSpeed = dashSpeed * 0.8f;
-
-      if (dashTimer <= 0.f) {
-        isDashing = false;
-        isJumping = false; // Upward velocity is from dash, not a jump
-        // Reduce y velocity drastically if dashing up/down so it feels less
-        // floaty after
-        if (dashDirection.y < 0.f)
-          velocity.y *= 0.85f;
-      }
-    }
-  } else {
-    // Horizontal Movement with Acceleration
-    if (left && !right) {
-      velocity.x -= acceleration * dt;
-    } else if (right && !left) {
-      velocity.x += acceleration * dt;
-    } else {
-      // Friction
-      if (velocity.x > 0) {
-        velocity.x -= friction * dt;
-        if (velocity.x < 0)
-          velocity.x = 0;
-      } else if (velocity.x < 0) {
-        velocity.x += friction * dt;
-        if (velocity.x > 0)
-          velocity.x = 0;
-      }
-    }
-
-    // Cap speed taking momentum into account
-    if (velocity.x > currentMaxSpeed)
-      velocity.x = currentMaxSpeed;
-    if (velocity.x < -currentMaxSpeed)
-      velocity.x = -currentMaxSpeed;
-
-    // 2. Wall Detection Logic
-    sf::FloatRect bounds = shape.getGlobalBounds();
-    sf::FloatRect leftCheck = bounds;
-    leftCheck.position.x -= 2.f;
-    sf::FloatRect rightCheck = bounds;
-    rightCheck.position.x += 2.f;
-
-    bool touchingLeft = !map.checkCollision(leftCheck).empty();
-    bool touchingRight = !map.checkCollision(rightCheck).empty();
-
-    // Reset wall state
-    isWallSliding = false;
-    wallDir = 0;
-
-    if (touchingLeft)
-      wallDir = -1;
-    if (touchingRight)
-      wallDir = 1;
-
-    // Dynamic Wall Slide
-    if (wallDir != 0 && velocity.y > 0 && !isGrounded) {
-      if ((wallDir == -1 && left) || (wallDir == 1 && right)) {
-        isWallSliding = true;
-        if (down) {
-          velocity.y = fastWallSlideSpeed;
-        } else {
-          velocity.y = wallSlideSpeed;
-        }
-      }
-    }
-
-    // 3. Jump and Wall Jump
-    if (jumpBufferTimer > 0.f) {
-      // Normal Jump (uses Coyote Time)
-      if (coyoteTimer > 0.f) {
-        velocity.y = -jumpStrength;
-        hasAirDash = true;
-        isJumping = true;
-        coyoteTimer = 0.f; // Prevent bunny hopping abuse
-        jumpBufferTimer = 0.f;
-        hasAirJump = false; // Consumed ground jump
-      }
-      // Wall Jump
-      else if (isWallSliding || (wallDir != 0 && !isGrounded)) {
-        velocity.y = -wallJumpForce.y;
-        velocity.x = -wallDir * wallJumpForce.x;
-        hasAirDash = true;
-        isJumping = true;
-        jumpBufferTimer = 0.f;
-        hasAirJump = false; // Consumed jump
-      }
-      // Air Jump (from falling or dashing)
-      else if (hasAirJump) {
-        velocity.y = -jumpStrength;
-        isJumping = true;
-        jumpBufferTimer = 0.f;
-        hasAirJump = false; // Consumed air jump
-      }
-    }
-
-    // 4. Variable Gravity (Dynamic Acceleration) with Gravity Halt at Peak
-    float currentGravity = gravity;
-
-    // Gravity Halt: near the peak of the jump (velocity close to 0), reduce
-    // gravity
-    const float peakThreshold = 50.f;
-    if (std::abs(velocity.y) < peakThreshold && !isGrounded && !isWallSliding) {
-      currentGravity *= 0.7f;
-    }
-    // Variable gravity relies on holding the button (only for jumps, not
-    // dashes)
-    else if (velocity.y < 0.f && (!jumpPressed || !isJumping)) {
-      currentGravity *= 2.0f;
-    } else if (velocity.y > 0.f) {
-      if (!isWallSliding) {
-        currentGravity *= 1.8f;
-      } else {
-        currentGravity = 0;
-      }
-    }
-
-    velocity.y += currentGravity * dt;
-  }
-
-  // 5. Physics & Collision Resolution
-
-  // --- X-AXIS ---
-  shape.move({velocity.x * dt, 0.f});
-
-  // Check collisions after X move
-  std::vector<sf::FloatRect> walls =
-      map.checkCollision(shape.getGlobalBounds());
-  for (const auto &wall : walls) {
-    sf::FloatRect playerBounds = shape.getGlobalBounds();
-
-    // Calculate Intersection Overlap using SFML 3 struct members
-    float overlapY = std::min(playerBounds.position.y + playerBounds.size.y,
-                              wall.position.y + wall.size.y) -
-                     std::max(playerBounds.position.y, wall.position.y);
-
-    // Ignore "snagging" on floor/ceiling seams
-    if (overlapY < 5.f)
-      continue;
-
-    // Resolve X collision
-    float playerCenter = shape.getPosition().x + shape.getSize().x / 2.f;
-    float wallCenter = wall.position.x + wall.size.x / 2.f;
-
-    if (velocity.x > 0) { // Moving Right
-      // Only resolve if wall is to the right
-      if (wallCenter > playerCenter) {
-        shape.setPosition(
-            {wall.position.x - shape.getSize().x, shape.getPosition().y});
-        velocity.x = 0; // Stop on wall
-      }
-    } else if (velocity.x < 0) { // Moving Left
-      // Only resolve if wall is to the left
-      if (wallCenter < playerCenter) {
-        shape.setPosition(
-            {wall.position.x + wall.size.x, shape.getPosition().y});
-        velocity.x = 0; // Stop on wall
-      }
-    }
-  }
-
-  // --- Y-AXIS ---
-  // Reset grounded (will be set true if we land on something)
+  
+  // Ground check via 3 raycasts downward from feet (left, center, right)
+  b2Vec2 pos = b2Body_GetPosition(mBody);
+  float halfHeight = 28.f / 2.f / mP2M;
+  float halfWidth = 10.f / 2.f / mP2M; // Slightly less than actual width (12.f) to not catch walls
+  
+  b2Vec2 rayTranslation = {0.0f, 4.0f / mP2M}; // Cast 4 pixels down
+  b2QueryFilter filter = b2DefaultQueryFilter();
+  
+  b2Pos origins[3] = {
+    {pos.x - halfWidth, pos.y + halfHeight},
+    {pos.x, pos.y + halfHeight},
+    {pos.x + halfWidth, pos.y + halfHeight}
+  };
+  
   isGrounded = false;
-
-  float prevBottom = shape.getPosition().y + shape.getSize().y;
-  shape.move({0.f, velocity.y * dt});
-
-  // Check collisions after Y move
-  walls = map.checkCollision(shape.getGlobalBounds());
-  for (const auto &wall : walls) {
-    sf::FloatRect playerBounds = shape.getGlobalBounds();
-
-    // Calculate Intersection Overlap X to distinguish Wall from Floor
-    float overlapX = std::min(playerBounds.position.x + playerBounds.size.x,
-                              wall.position.x + wall.size.x) -
-                     std::max(playerBounds.position.x, wall.position.x);
-
-    // Ignore walls (vertical surfaces) when resolving Y collisions
-    if (overlapX < 2.f)
-      continue;
-
-    // Resolve Y collision
-    if (velocity.y > 0) { // Falling
-      // Only snap to top if we were previously ABOVE the wall
-      // Tolerance allows for fast falling, but prevents snapping from
-      // side/bottom
-      if (prevBottom > wall.position.y + 15.f)
-        continue;
-
-      shape.setPosition(
-          {shape.getPosition().x, wall.position.y - shape.getSize().y});
-      velocity.y = 0.f;
+  for (int i = 0; i < 3; ++i) {
+    b2RayResult rayResult = b2World_CastRayClosest(mWorld, origins[i], rayTranslation, filter);
+    if (rayResult.hit && !B2_ID_EQUALS(b2Shape_GetBody(rayResult.shapeId), mBody)) {
       isGrounded = true;
-    } else if (velocity.y < 0) { // Jumping up
-      // Upwards Corner Correction: Try to wiggle player horizontally
-      const float cornerMargin = 6.f; // Pixels to check for nudge
-      sf::FloatRect playerBounds = shape.getGlobalBounds();
-
-      // Check if we can nudge left
-      sf::FloatRect nudgeLeft = playerBounds;
-      nudgeLeft.position.x -= cornerMargin;
-      if (map.checkCollision(nudgeLeft).empty()) {
-        shape.move({-cornerMargin, 0.f});
-      } else {
-        // Check if we can nudge right
-        sf::FloatRect nudgeRight = playerBounds;
-        nudgeRight.position.x += cornerMargin;
-        if (map.checkCollision(nudgeRight).empty()) {
-          shape.move({cornerMargin, 0.f});
-        } else {
-          // Can't nudge, stop upward movement
-          shape.setPosition(
-              {shape.getPosition().x, wall.position.y + wall.size.y});
-          velocity.y = 0.f;
-        }
-      }
+      break;
     }
   }
-
-  // --- ONE-WAY PLATFORMS ---
-  // Check if player wants to drop through (S key)
-  bool dropPressed = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::S) ||
-                     sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Down);
-
-  // Only check platforms if falling and not pressing drop
-  if (velocity.y >= 0 && !dropPressed) {
-    std::vector<sf::FloatRect> platforms =
-        map.checkPlatformCollision(shape.getGlobalBounds());
-
-    for (const auto &platform : platforms) {
-      sf::FloatRect playerBounds = shape.getGlobalBounds();
-
-      // Calculate overlap X to ensure we're actually on the platform
-      float overlapX = std::min(playerBounds.position.x + playerBounds.size.x,
-                                platform.position.x + platform.size.x) -
-                       std::max(playerBounds.position.x, platform.position.x);
-
-      // Need sufficient horizontal overlap
-      if (overlapX < 4.f)
-        continue;
-
-      // Only land if we were ABOVE the platform before this frame
-      if (prevBottom <= platform.position.y + 4.f) {
-        shape.setPosition(
-            {shape.getPosition().x, platform.position.y - shape.getSize().y});
-        velocity.y = 0.f;
-        isGrounded = true;
-        break; // Only land on one platform
-      }
-    }
+  
+  jumpedThisFrame = false;
+  if (jumpPressed && isGrounded && !mJumpHeld) {
+    velocity.y = -movementController.settings.jumpImpulse;
+    jumpedThisFrame = true;
   }
+  mJumpHeld = jumpPressed;
 
-  bool isMoving = std::abs(velocity.x) > 10.f;
-  bool inputActive = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Left) ||
-                     sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Right) ||
-                     sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A) ||
-                     sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D);
-
-  if (isGrounded && !isWallSliding) {
-    if (!isMoving && !inputActive) {
-      if (animState != AnimState::Idle && animState != AnimState::Stopping) {
-        animState = AnimState::Stopping;
-        currentFrame = 0;
-        animationTimer = 0.f;
-      } else if (animState == AnimState::Stopping) {
-
-        animationTimer += dt;
-        float stopSpeed = 0.06f;
-
-        if (animationTimer >= stopSpeed) {
-          animationTimer = 0.f;
-          currentFrame = (currentFrame == 0) ? 1 : 0;
-        }
-        if (std::abs(velocity.x) < 5.f) {
-          animState = AnimState::Idle;
-          currentFrame = 0;
-          animationTimer = 0.f;
-        }
-
-        sprite.setTextureRect(sf::IntRect({currentFrame * 32, 96}, {32, 32}));
-      } else {
-        animationTimer += dt;
-        float frameDelay = (currentFrame == 0) ? 2.0f : 0.5f;
-
-        if (animationTimer >= frameDelay) {
-          animationTimer = 0.f;
-          currentFrame = (currentFrame + 1) % 2;
-        }
-        sprite.setTextureRect(sf::IntRect({currentFrame * 32, 0}, {32, 32}));
-      }
-
-    } else if (inputActive && isMoving) {
-      if (animState == AnimState::Idle || animState == AnimState::Stopping ||
-          !wasMoving) {
-        animState = AnimState::WalkStart;
-        currentFrame = 0;
-        animationTimer = 0.f;
-      }
-
-      animationTimer += dt;
-
-      if (animState == AnimState::WalkStart) {
-        float walkSpeed = 0.15f;
-
-        if (animationTimer >= walkSpeed) {
-          animationTimer = 0.f;
-          currentFrame++;
-
-          if (currentFrame >= 2) {
-            animState = AnimState::RunLoop;
-            currentFrame = 0;
-          }
-        }
-        sprite.setTextureRect(sf::IntRect({currentFrame * 32, 32}, {32, 32}));
-
-      } else {
-        float runSpeed = 0.1f;
-
-        if (animationTimer >= runSpeed) {
-          animationTimer = 0.f;
-          currentFrame = (currentFrame + 1) % 4;
-        }
-        sprite.setTextureRect(sf::IntRect({currentFrame * 32, 64}, {32, 32}));
-      }
-
-    } else {
-      if (animState != AnimState::Stopping) {
-        animState = AnimState::Stopping;
-        currentFrame = 0;
-        animationTimer = 0.f;
-      }
-      animationTimer += dt;
-      float stopSpeed = 0.1f;
-
-      if (animationTimer >= stopSpeed) {
-        animationTimer = 0.f;
-        currentFrame = (currentFrame == 0) ? 1 : 0;
-      }
-
-      sprite.setTextureRect(sf::IntRect({currentFrame * 32, 96}, {32, 32}));
-    }
-  } else {
-    // In air (jumping or falling) - not grounded and not wall sliding
-    float airAnimSpeed = 0.1f; // Same speed as run animation
-
-    if (velocity.y < 0) {
-      // Going up - Jump animation (row 5, index 4)
-      if (animState != AnimState::Jumping) {
-        animState = AnimState::Jumping;
-        currentFrame = 0;
-        animationTimer = 0.f;
-      }
-
-      animationTimer += dt;
-      if (animationTimer >= airAnimSpeed) {
-        animationTimer = 0.f;
-        currentFrame = (currentFrame + 1) % 2; // 2 frames: jump1, jump2
-      }
-
-      sprite.setTextureRect(
-          sf::IntRect({currentFrame * 32, 128}, {32, 32})); // Row 5 = y:128
-
-    } else {
-      // Going down - Fall animation (row 6, index 5)
-      // Use single frame for falling to prevent flickering if frame 2 is
-      // missing
-      if (animState != AnimState::Falling) {
-        animState = AnimState::Falling;
-        currentFrame = 0;
-        animationTimer = 0.f;
-      }
-
-      // Keep strictly at frame 0
-      sprite.setTextureRect(sf::IntRect({0, 160}, {32, 32}));
-    }
-  }
-
-  wasMoving = isMoving;
-  sf::Vector2f bottomCenter = {shape.getPosition().x + shape.getSize().x / 2.f,
-                               shape.getPosition().y + shape.getSize().y};
-  sprite.setPosition(bottomCenter);
-
-  // Flip Logic
-  if (velocity.x > 1.f) {
-    facingRight = true;
-  } else if (velocity.x < -1.f) {
+  // Source-style movement
+  b2Vec2 wishDir = {0.0f, 0.0f};
+  if (left && !right) {
+    wishDir.x = -1.0f;
     facingRight = false;
+  } else if (right && !left) {
+    wishDir.x = 1.0f;
+    facingRight = true;
+  }
+  
+  if (isGrounded) {
+    movementController.groundMove(velocity, wishDir, dtSec, jumpedThisFrame);
+  } else {
+    movementController.airMove(velocity, wishDir, dtSec);
   }
 
+  b2Body_SetLinearVelocity(mBody, velocity);
+  
+  // Update SFML graphics position from raycast pos (already fetched above)
+  shape.setPosition({pos.x * mP2M, pos.y * mP2M});
+  
+  sf::Vector2f bottomCenter = {shape.getPosition().x,
+                               shape.getPosition().y + shape.getSize().y / 2.f};
+  sprite.setPosition(bottomCenter);
+  
   if (facingRight) {
     sprite.setScale({1.5f, 1.5f});
   } else {
     sprite.setScale({-1.5f, 1.5f});
   }
+  
+  // Dummy animation for now
+  sprite.setTextureRect(sf::IntRect({0, 0}, {32, 32}));
 }
 
 void Player::render(sf::RenderWindow &window, bool showHitbox) {
   window.draw(sprite);
   if (showHitbox) {
     sf::RectangleShape hitboxVis = shape;
-    hitboxVis.setFillColor(sf::Color(0, 255, 0, 100)); // Semi-transparent green
+    hitboxVis.setFillColor(sf::Color(0, 255, 0, 100));
     hitboxVis.setOutlineColor(sf::Color::Green);
     hitboxVis.setOutlineThickness(1.f);
     window.draw(hitboxVis);
   }
 }
 
-void Player::reset(sf::Vector2f position) {
-  shape.setPosition({position.x - shape.getSize().x / 2.f,
-                     position.y - shape.getSize().y / 2.f});
-  velocity = {0.f, 0.f};
-  isGrounded = false;
+void Player::reset(b2WorldId world, sf::Vector2f position, float P2M) {
+  b2Rot rot = {1.0f, 0.0f}; // Identity rotation
+  b2Body_SetTransform(mBody, {position.x / P2M, position.y / P2M}, rot);
+  b2Body_SetLinearVelocity(mBody, {0.0f, 0.0f});
+}
+
+sf::Vector2f Player::getPosition() const {
+  b2Vec2 pos = b2Body_GetPosition(mBody);
+  return {pos.x * mP2M, pos.y * mP2M};
+}
+
+sf::Vector2f Player::getVelocity() const {
+  b2Vec2 vel = b2Body_GetLinearVelocity(mBody);
+  return {vel.x * mP2M, vel.y * mP2M};
+}
+
+void Player::applyForce(sf::Vector2f force) {
+  b2Body_ApplyForceToCenter(mBody, {force.x, force.y}, true);
 }

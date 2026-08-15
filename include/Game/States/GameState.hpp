@@ -2,8 +2,14 @@
 
 #include <Engine/States/State.hpp>
 #include <Game/Entities/Player.hpp>
-#include <Game/World/Map.hpp>
-#include <SFML/Graphics.hpp>
+#include <box2d/box2d.h>
+#include <Game/Systems/MouseInteraction.hpp>
+#include <Game/UI/SpawnMenu.hpp>
+#include <Game/Systems/WindSystem.hpp>
+#include <Game/Systems/ObjectManager.hpp>
+#include <Game/UI/HUD.hpp>
+#include <vector>
+#include <memory>
 
 class GameState : public State {
 public:
@@ -14,25 +20,25 @@ public:
   void render(sf::RenderWindow &window) override;
 
 private:
-  void toggleHitbox();
-  void toggleFPS();
-  void loadLevel(const std::string &filename);
+  void initPhysics();
 
   Player mPlayer;
-  Map mMap;
-  sf::View mCamera;
+  b2WorldId mWorld;
 
+  sf::View mCamera;
   sf::Texture mBackgroundTexture;
   sf::Sprite mBackgroundSprite;
+  sf::Font mFont;
 
-  // Debug features
-  bool mShowHitbox;
-  bool mShowFPS;
+  sf::RectangleShape mGroundShape;
+  std::vector<sf::RectangleShape> mStaticShapes;
 
-  // FPS counter
-  sf::Font mFPSFont;
-  bool mFPSFontLoaded;
-  sf::Clock mFPSClock;
-  int mFrameCount;
-  int mCurrentFPS;
+  MouseInteraction mMouseInteraction;
+  SpawnMenu mSpawnMenu;
+  HUD mHUD;
+
+  WindSystem mWindSystem;
+  ObjectManager mObjectManager;
+  
+  float mPhysicsAccumulator = 0.0f;
 };

@@ -3,6 +3,8 @@
 #include <Engine/States/State.hpp>
 #include <SFML/Graphics.hpp>
 #include <SFML/Window.hpp>
+#include <SFML/Window/Context.hpp>
+#include <Game/UI/DevConsole.hpp>
 #include <memory>
 #include <vector>
 
@@ -22,6 +24,8 @@ public:
   int getWindowMode() const { return mWindowMode; }
 
   void cycleWindowMode();
+  
+  DevConsole& getConsole() { return mConsole; }
 
 private:
   void processEvents();
@@ -31,6 +35,9 @@ private:
   void applyPendingChanges();
 
   sf::RenderWindow mWindow;
+  sf::Context mContext;
+  DevConsole mConsole;
+  bool mConsoleOpenedFromGame = false;
   std::vector<std::unique_ptr<State>> mStates;
 
   static const sf::Time TimePerFrame;

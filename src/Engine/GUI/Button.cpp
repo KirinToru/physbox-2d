@@ -5,11 +5,10 @@ Button::Button(const sf::Font &font, const std::string &text,
                sf::Vector2f position)
     : mText(font), mIsSelected(false) {
   mText.setString(text);
-  mText.setCharacterSize(30);
-  // Center origin
+  mText.setCharacterSize(22);
+  // Center origin vertically, left align horizontally
   sf::FloatRect bounds = mText.getLocalBounds();
-  mText.setOrigin(
-      {std::floor(bounds.size.x / 2.f), std::floor(bounds.size.y / 2.f)});
+  mText.setOrigin({0.f, std::floor(bounds.size.y / 2.f)});
   mText.setPosition(position);
 
   // Default color
@@ -21,12 +20,16 @@ Button::Button(const sf::Font &font, const std::string &text,
 void Button::select(bool selected) {
   mIsSelected = selected;
   if (mIsSelected) {
-    mText.setFillColor(sf::Color::Yellow);
+    mText.setFillColor(sf::Color(255, 150, 0));
     mText.setScale({1.2f, 1.2f});
   } else {
     mText.setFillColor(sf::Color::White);
     mText.setScale({1.0f, 1.0f});
   }
+}
+
+void Button::setText(const std::string& text) {
+  mText.setString(text);
 }
 
 void Button::setPosition(sf::Vector2f position) { mText.setPosition(position); }

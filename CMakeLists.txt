@@ -36,11 +36,19 @@ set(SOURCES
     "src/Game/main.cpp"
     "src/Game/Game.cpp"
     "src/Game/Entities/Player.cpp"
+    "src/Game/Entities/SourceMovementController2D.cpp"
+    "src/Game/Entities/InteractiveProp2D.cpp"
     "src/Game/World/Map.cpp"
     "src/Game/States/MenuState.cpp"
-    "src/Game/States/GameState.cpp"
     "src/Game/States/PauseState.cpp"
+    "src/Game/States/GameState.cpp"
     "src/Engine/GUI/Button.cpp"
+    "src/Game/UI/DevConsole.cpp"
+    "src/Game/UI/SpawnMenu.cpp"
+    "src/Game/UI/HUD.cpp"
+    "src/Game/Systems/MouseInteraction.cpp"
+    "src/Game/Systems/WindSystem.cpp"
+    "src/Game/Systems/ObjectManager.cpp"
 )
 add_executable(PhysBox2D ${SOURCES})
 

@@ -1,205 +1,203 @@
-#include <Game/Game.hpp>
 #include <Game/States/GameState.hpp>
+#include <Game/States/MenuState.hpp>
 #include <Game/States/PauseState.hpp>
-#include <cmath>
+#include <Game/States/GameState.hpp>
+#include <Game/States/MenuState.hpp>
+#include <Game/States/PauseState.hpp>
+#include <Game/Game.hpp>
 #include <iostream>
+#include <sstream>
 
 GameState::GameState(Game *game)
-    : State(game), mCamera({0.f, 0.f}, {960.f, 540.f}), mPlayer(), mMap(),
-      mBackgroundSprite(mBackgroundTexture), mShowHitbox(false),
-      mShowFPS(false), mFrameCount(0), mCurrentFPS(0) {
+    : State(game), mCamera({0.f, 0.f}, {1280.f, 720.f}),
+      mMouseInteraction(),
+      mSpawnMenu(), mBackgroundSprite(mBackgroundTexture) {
 
-
-  if (!mBackgroundTexture.loadFromFile("assets/backgrounds/bg.png"))
+  if (!mBackgroundTexture.loadFromFile("assets/backgrounds/bg.png")) {
     std::cerr << "Failed to load bg.png" << std::endl;
+  }
   mBackgroundTexture.setRepeated(true);
   mBackgroundSprite.setTexture(mBackgroundTexture);
+  mBackgroundSprite.setTextureRect(sf::IntRect({0, 0}, {8000, 6000}));
+  (void)mFont.openFromFile("assets/fonts/trebuc.ttf");
+  mBackgroundSprite.setPosition({-4000.f, -3000.f});
 
-  mFPSFontLoaded = mFPSFont.openFromFile("assets/fonts/font.ttf");
+  initPhysics();
 
-  loadLevel("assets/maps/test.tmx");
+  mSpawnMenu.init(mFont);
+
+  mGame->getConsole().setCommandCallback([this](const std::string& commandLine) {
+    std::istringstream iss(commandLine);
+    std::string cmd;
+    iss >> cmd;
+    
+    if (cmd == "gravity") {
+      float gx, gy;
+      if (iss >> gx >> gy) {
+        b2World_SetGravity(mWorld, {gx, gy});
+        mGame->getConsole().addLog("Gravity set to " + std::to_string(gx) + ", " + std::to_string(gy));
+      } else {
+        mGame->getConsole().addLog("Usage: gravity <x> <y>");
+      }
+    } else if (cmd == "wind") {
+      float wx, wy;
+      if (iss >> wx >> wy) {
+        mWindSystem.setWindForce({wx, wy});
+        mGame->getConsole().addLog("Wind set to " + std::to_string(wx) + ", " + std::to_string(wy));
+      } else {
+        mGame->getConsole().addLog("Usage: wind <x> <y>");
+      }
+    } else if (cmd == "clear") {
+      mGame->getConsole().clearLog();
+    } else if (cmd == "help") {
+      mGame->getConsole().addLog("Available commands:");
+      mGame->getConsole().addLog("  help           - Show this help message");
+      mGame->getConsole().addLog("  clear          - Clear the console history");
+      mGame->getConsole().addLog("  gravity <x> <y> - Set the world gravity forces");
+      mGame->getConsole().addLog("  wind <x> <y>   - Set global wind force");
+    } else {
+      mGame->getConsole().addLog("Unknown command: " + cmd);
+    }
+  });
 }
 
-void GameState::loadLevel(const std::string &filename) {
-  if (mMap.loadFromFile(filename)) {
-    mPlayer.reset(mMap.getStartPosition());
-    sf::Vector2f playerPos = mPlayer.getPosition();
-    sf::Vector2f viewSize = mCamera.getSize();
-    float mapW = mMap.getWidth();
-    float mapH = mMap.getHeight();
+void GameState::initPhysics() {
+  b2WorldDef worldDef = b2DefaultWorldDef();
+  worldDef.gravity = {0.0f, 25.0f};
+  mWorld = b2CreateWorld(&worldDef);
 
-    float camX =
-        std::clamp(playerPos.x, viewSize.x / 2.f, mapW - viewSize.x / 2.f);
-    float camY =
-        std::clamp(playerPos.y, viewSize.y / 2.f, mapH - viewSize.y / 2.f);
-    mCamera.setCenter({camX, camY});
-  } else {
-    std::cerr << "Failed to load level: " << filename << std::endl;
-  }
+  mMouseInteraction.init(mWorld, 50.0f);
+
+  float P2M = 50.0f;
+
+  mPlayer.init(mWorld, {200.f, 400.f}, P2M);
+
+  b2ShapeDef staticShapeDef = b2DefaultShapeDef();
+  staticShapeDef.material.friction = 0.5f;
+
+  // Helper lambda to create a static box with visuals
+  auto createStaticBox = [&](float cx, float cy, float w, float h, sf::Color color) {
+    b2BodyDef bodyDef = b2DefaultBodyDef();
+    bodyDef.position = {cx / P2M, cy / P2M};
+    b2BodyId bodyId = b2CreateBody(mWorld, &bodyDef);
+    b2Polygon box = b2MakeBox(w / 2.f / P2M, h / 2.f / P2M);
+    b2CreatePolygonShape(bodyId, &staticShapeDef, &box);
+
+    sf::RectangleShape shape({w, h});
+    shape.setOrigin({w / 2.f, h / 2.f});
+    shape.setPosition({cx, cy});
+    shape.setFillColor(color);
+    mStaticShapes.push_back(shape);
+  };
+
+  sf::Color wallColor(100, 100, 100);
+  sf::Color shelterColor(80, 80, 80);
+
+  // Ground - wide platform
+  createStaticBox(960.f, 600.f, 1920.f, 20.f, wallColor);
+
+  // Left boundary wall (short)
+  createStaticBox(0.f, 500.f, 20.f, 220.f, wallColor);
+
+  // Right boundary wall (short) 
+  createStaticBox(1920.f, 500.f, 20.f, 220.f, wallColor);
+
+  // Small shelter in the middle for wind testing:
+  // Vertical wall
+  createStaticBox(800.f, 530.f, 20.f, 120.f, shelterColor);
+  // Small roof on top
+  createStaticBox(850.f, 470.f, 120.f, 15.f, shelterColor);
+
+  mObjectManager.spawnBox(mWorld, {600.f, 400.f}, P2M);
+  mObjectManager.spawnBall(mWorld, {700.f, 400.f}, P2M);
+  mObjectManager.spawnBox(mWorld, {900.f, 400.f}, P2M); // Box behind shelter
 }
 
 void GameState::handleInput(sf::Event &event) {
-  if (const auto *keyPress = event.getIf<sf::Event::KeyPressed>()) {
-    if (keyPress->code == sf::Keyboard::Key::Escape)
-      mGame->pushState(std::make_unique<PauseState>(mGame));
-    if (keyPress->code == sf::Keyboard::Key::F2)
-      mShowFPS = !mShowFPS;
-    if (keyPress->code == sf::Keyboard::Key::F1)
-      mShowHitbox = !mShowHitbox;
+  if (const auto* keyPress = event.getIf<sf::Event::KeyPressed>()) {
+    if (keyPress->code == sf::Keyboard::Key::Escape) {
+      if (mSpawnMenu.isOpen()) {
+        mSpawnMenu.setOpen(false);
+      } else {
+        mGame->pushState(std::make_unique<PauseState>(mGame));
+      }
+    }
+    
+    if (keyPress->code == sf::Keyboard::Key::Grave || keyPress->code == sf::Keyboard::Key::Grave) {
+      mGame->getConsole().toggle();
+    }
+    
+    if (keyPress->code == sf::Keyboard::Key::F1) {
+      mHUD.toggleHitbox();
+    }
+    if (keyPress->code == sf::Keyboard::Key::F2) {
+      mHUD.toggleFPS();
+    }
+    
+    if (keyPress->code == sf::Keyboard::Key::Q && !mGame->getConsole().isOpen()) {
+      mSpawnMenu.setOpen(!mSpawnMenu.isOpen());
+    }
+  }
+  
+  if (mSpawnMenu.handleEvent(event, mGame->getWindow())) {
+    return;
+  }
+
+  if (const auto* mousePress = event.getIf<sf::Event::MouseButtonPressed>()) {
+    if (mousePress->button == sf::Mouse::Button::Right && !mSpawnMenu.isOpen() && !mGame->getConsole().isOpen()) {
+      sf::Vector2i pixelPos = {mousePress->position.x, mousePress->position.y};
+      sf::Vector2f worldPos = mGame->getWindow().mapPixelToCoords(pixelPos, mCamera);
+      
+      if (mSpawnMenu.getSelectedItem() == SpawnMenu::ItemType::Box) {
+        mObjectManager.spawnBox(mWorld, worldPos, 50.0f);
+      } else if (mSpawnMenu.getSelectedItem() == SpawnMenu::ItemType::Ball) {
+        mObjectManager.spawnBall(mWorld, worldPos, 50.0f);
+      }
+    }
+  }
+
+  if (!mSpawnMenu.isOpen() && !mGame->getConsole().isOpen()) {
+    mMouseInteraction.handleEvent(event, mGame->getWindow(), mCamera);
   }
 }
 
 void GameState::update(sf::Time dt) {
-  // Normal gameplay
-  mPlayer.update(dt.asSeconds(), mMap);
+  float dtSec = dt.asSeconds();
+  
+  mHUD.update(dt);
 
-  // Camera
-  sf::Vector2f playerPos = mPlayer.getPosition();
-  sf::Vector2f viewSize = mCamera.getSize();
-  sf::Vector2f currentCenter = mCamera.getCenter();
-  float mapW = mMap.getWidth();
-  float mapH = mMap.getHeight();
-  float targetX = (mapW < viewSize.x)
-                      ? mapW / 2.f
-                      : std::clamp(playerPos.x, viewSize.x / 2.f,
-                                   mapW - viewSize.x / 2.f);
-  float targetY = (mapH < viewSize.y)
-                      ? mapH / 2.f
-                      : std::clamp(playerPos.y, viewSize.y / 2.f,
-                                   mapH - viewSize.y / 2.f);
-  float lerpSpeed = 5.0f;
-  float newX = currentCenter.x +
-               (targetX - currentCenter.x) * lerpSpeed * dt.asSeconds();
-  float newY = currentCenter.y +
-               (targetY - currentCenter.y) * lerpSpeed * dt.asSeconds();
-  mCamera.setCenter({std::round(newX), std::round(newY)});
+  if (!mGame->getConsole().isOpen()) {
+    // Fixed physics timestep for stability
+    const float fixedDt = 1.0f / 60.0f;
+    mPhysicsAccumulator += dtSec;
+    while (mPhysicsAccumulator >= fixedDt) {
+      mWindSystem.update(fixedDt, mWorld, mObjectManager.getBodies());
+      mPlayer.update(fixedDt);
+      b2World_Step(mWorld, fixedDt, 4);
+      mPhysicsAccumulator -= fixedDt;
+    }
+    mMouseInteraction.update(dtSec, mGame->getWindow(), mCamera);
+  }
+
+  sf::Vector2f targetPos = mPlayer.getPosition();
+  sf::Vector2f currentPos = mCamera.getCenter();
+  mCamera.setCenter(currentPos + (targetPos - currentPos) * 5.0f * dtSec);
 }
 
 void GameState::render(sf::RenderWindow &window) {
   window.setView(mCamera);
-
-  // Parallax Background
-  sf::Vector2f cameraCenter = mCamera.getCenter();
-  sf::Vector2f viewSize = mCamera.getSize();
-
-  mBackgroundSprite.setPosition(
-      {cameraCenter.x - viewSize.x / 2.f, cameraCenter.y - viewSize.y / 2.f});
-
-  float parallaxFactorX = 0.2f;
-  float parallaxFactorY = 0.1f;
-
-  int texX = static_cast<int>(cameraCenter.x * parallaxFactorX);
-  int texY = static_cast<int>(cameraCenter.y * parallaxFactorY);
-  mBackgroundSprite.setTextureRect(
-      sf::IntRect({texX, texY}, {static_cast<int>(viewSize.x) + 2,
-                                 static_cast<int>(viewSize.y) + 2}));
-
+  
   window.draw(mBackgroundSprite);
-  mMap.render(window, mPlayer.getPosition(), mShowHitbox);
-  mPlayer.render(window, mShowHitbox);
-
-  // FPS counter
-  mFrameCount++;
-  if (mFPSClock.getElapsedTime().asSeconds() >= 0.1f) {
-    mCurrentFPS =
-        static_cast<int>(mFrameCount / mFPSClock.getElapsedTime().asSeconds());
-    mFrameCount = 0;
-    mFPSClock.restart();
+  
+  for (const auto& shape : mStaticShapes) {
+    window.draw(shape);
   }
 
-  if (mShowFPS && mFPSFontLoaded) {
-    window.setView(window.getDefaultView());
+  mObjectManager.render(window, 50.0f);
+  mPlayer.render(window, mHUD.isHitboxVisible());
+  mWindSystem.render(window);
+  mMouseInteraction.render(window);
 
-    // 1. FPS Text
-    sf::Text fpsText(mFPSFont);
-    fpsText.setString("FPS: " + std::to_string(mCurrentFPS));
-    fpsText.setCharacterSize(14);
-
-    sf::Color fpsColor;
-    if (mCurrentFPS >= 60) {
-      fpsColor = sf::Color::Green;
-    } else if (mCurrentFPS >= 30) {
-      float factor = (mCurrentFPS - 30.f) / 30.f;
-      fpsColor =
-          sf::Color(static_cast<unsigned char>(255.f * (1.f - factor)), 255, 0);
-    } else {
-      float factor = std::max(0.f, mCurrentFPS / 30.f);
-      fpsColor = sf::Color(255, static_cast<unsigned char>(255.f * factor), 0);
-    }
-    fpsText.setFillColor(fpsColor);
-    fpsText.setOutlineColor(sf::Color::Black);
-    fpsText.setOutlineThickness(1.5f);
-    fpsText.setPosition({10.f, 10.f});
-    window.draw(fpsText);
-
-    // 2. Hitboxes Text
-    sf::Text hitboxText(mFPSFont);
-    hitboxText.setString("Hitboxes: " +
-                         std::string(mShowHitbox ? "ON" : "OFF"));
-    hitboxText.setCharacterSize(14);
-    hitboxText.setFillColor(mShowHitbox ? sf::Color::Green : sf::Color::Red);
-    hitboxText.setOutlineColor(sf::Color::Black);
-    hitboxText.setOutlineThickness(1.5f);
-    hitboxText.setPosition({10.f, fpsText.getPosition().y +
-                                      fpsText.getGlobalBounds().size.y + 5.f});
-    window.draw(hitboxText);
-
-    // 3 & 4. Main Stats (Screen Mode, Velocity)
-    std::ostringstream hudText;
-    int wMode = mGame->getWindowMode();
-    hudText << "Screen Mode: "
-            << (wMode == 0 ? "Windowed"
-                           : (wMode == 1 ? "Maximized" : "Fullscreen"))
-            << "\n";
-    sf::Vector2f vel = mPlayer.getVelocity();
-    hudText << std::fixed << std::setprecision(1);
-    hudText << "Velocity: X=" << vel.x << " Y=" << vel.y;
-
-    sf::Text statsText(mFPSFont);
-    statsText.setString(hudText.str());
-    statsText.setCharacterSize(14);
-    statsText.setFillColor(sf::Color::White);
-    statsText.setOutlineColor(sf::Color::Black);
-    statsText.setOutlineThickness(1.5f);
-    statsText.setPosition({10.f, hitboxText.getPosition().y +
-                                     hitboxText.getGlobalBounds().size.y +
-                                     5.f});
-    window.draw(statsText);
-
-    // 5. Dash Ready Text
-    bool dashReady = mPlayer.getDashCooldownTimer() <= 0.f &&
-                     (mPlayer.getIsGrounded() || mPlayer.getHasAirDash());
-
-    sf::Text dashText(mFPSFont);
-    dashText.setString("Dash Ready: " + std::string(dashReady ? "YES" : "NO"));
-    dashText.setCharacterSize(14);
-    dashText.setFillColor(dashReady ? sf::Color::Green : sf::Color::Red);
-    dashText.setOutlineColor(sf::Color::Black);
-    dashText.setOutlineThickness(1.5f);
-    dashText.setPosition({10.f, statsText.getPosition().y +
-                                    statsText.getGlobalBounds().size.y + 5.f});
-    window.draw(dashText);
-
-    // 6. Player State Text
-    std::string stateStr = "Idle";
-    if (mPlayer.getIsDashing())
-      stateStr = "Dash";
-    else if (!mPlayer.getIsGrounded()) {
-      if (mPlayer.getIsWallSliding())
-        stateStr = "Wall Slide";
-      else
-        stateStr = "Jump/Fall";
-    } else if (std::abs(vel.x) > 0.1f)
-      stateStr = "Run";
-
-    sf::Text stateText(mFPSFont);
-    stateText.setString("State: " + stateStr);
-    stateText.setCharacterSize(14);
-    stateText.setFillColor(sf::Color::Cyan);
-    stateText.setOutlineColor(sf::Color::Black);
-    stateText.setOutlineThickness(1.5f);
-    stateText.setPosition({10.f, dashText.getPosition().y +
-                                     dashText.getGlobalBounds().size.y + 5.f});
-    window.draw(stateText);
-  }
+  mHUD.render(window);
+  mSpawnMenu.render(window);
 }

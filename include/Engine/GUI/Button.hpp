@@ -7,6 +7,7 @@ class Button {
 public:
   Button(const sf::Font &font, const std::string &text, sf::Vector2f position);
   void select(bool selected);
+  void setText(const std::string& text);
   void setPosition(sf::Vector2f position);
   bool contains(sf::Vector2f point) const;
   void render(sf::RenderWindow &window);
