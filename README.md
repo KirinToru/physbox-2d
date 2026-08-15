@@ -1,8 +1,8 @@
 <p align="center">
   <img src="assets/logo.png" alt="Journey to the Clouds" height="100px"/>
 </p>
-<h1 align="center">Journey to the Clouds</h1>
-<h3 align="center">A 2D Hide-and-Seek Physics Sandbox with Q-Learning AI</h3>
+<h1 align="center">PhysBox 2d</h1>
+<h3 align="center">A 2D Physics Sandbox</h3>
 <p align="center">
 <img src="https://img.shields.io/badge/C++-20-00599C?style=flat-square&logo=c%2B%2B">
 <img src="https://img.shields.io/badge/SFML-v3.0.2-8CC445?logo=SFML&style=flat-square">
@@ -10,7 +10,7 @@
 <a href="LICENSE"><img src="https://img.shields.io/badge/license-Source%20Available-informational?style=flat-square"/></a>
 </p>
 
-Journey to the Clouds is a 2D Tag (Hide-and-Seek) game focusing on stealth, custom rigid body physics, and a self-learning AI antagonist powered by Q-Learning. Built entirely from scratch with C++20 and SFML 3.0.2.
+PhysBox is a 2D simulator game focusing on physics. Built entirely from scratch with C++ and SFML.
 
 ### Contents
 
@@ -25,9 +25,7 @@ Journey to the Clouds is a 2D Tag (Hide-and-Seek) game focusing on stealth, cust
 
 ## Features
 
-- **Custom Physics Engine:** Rigid body dynamics, rotation, and collisions built from scratch.
-- **Q-Learning AI:** A smart monster that learns and adapts to catch the player using Reinforcement Learning.
-- **Hide-and-Seek Mechanics:** Line of Sight, memory-based searching, and physical object manipulation to hide.
+- **TODO**
 
 ## Controls
 
