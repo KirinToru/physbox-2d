@@ -19,16 +19,8 @@ jobs:
       - name: Setup MSVC
         uses: ilammy/msvc-dev-cmd@v1
 
-      - name: Download SFML
-        run: |
-          Invoke-WebRequest -Uri "https://github.com/SFML/SFML/releases/download/3.0.2/SFML-3.0.2-Windows.VS2022.x64.zip" -OutFile sfml.zip
-          Expand-Archive sfml.zip -DestinationPath C:/
-        shell: pwsh
-
       - name: Configure CMake
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-        env:
-          SFML_DIR: C:/SFML-3.0.2
 
       - name: Build Release
         run: cmake --build build
@@ -36,16 +28,17 @@ jobs:
       - name: Package Build
         run: |
           mkdir release
-          Copy-Item build/JourneyToTheClouds.exe release/
+          Copy-Item build/PhysBox2D.exe release/
           Copy-Item -Recurse assets release/assets
+          if (Test-Path build/*.dll) { Copy-Item build/*.dll release/ -ErrorAction SilentlyContinue }
           if (Test-Path lib/*.dll) { Copy-Item lib/*.dll release/ -ErrorAction SilentlyContinue }
-          Compress-Archive -Path release/* -DestinationPath "JourneyToTheClouds-${{ github.ref_name }}-win64.zip"
+          Compress-Archive -Path release/* -DestinationPath "PhysBox2D-${{ github.ref_name }}-win64.zip"
         shell: pwsh
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: JourneyToTheClouds-${{ github.ref_name }}-win64.zip
+          files: PhysBox2D-${{ github.ref_name }}-win64.zip
           generate_release_notes: true
 
   build-linux:
@@ -60,16 +53,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libxrandr-dev libxcursor-dev libudev-dev libopenal-dev libflac-dev libvorbis-dev libgl1-mesa-dev libegl1-mesa-dev
 
-      - name: Download SFML
-        run: |
-          wget https://github.com/SFML/SFML/releases/download/3.0.2/SFML-3.0.2-Linux.GCC.tar.gz -O sfml.tar.gz
-          mkdir -p /opt/SFML
-          tar -xzf sfml.tar.gz -C /opt/SFML --strip-components=1
-
       - name: Configure CMake
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-        env:
-          SFML_DIR: /opt/SFML
 
       - name: Build Release
         run: cmake --build build
@@ -77,15 +62,17 @@ jobs:
       - name: Package Build
         run: |
           mkdir release
-          cp build/JourneyToTheClouds release/
+          cp build/PhysBox2D release/
           cp -r assets release/assets
-          cp -r /opt/SFML/lib release/lib
-          cd release && tar -czvf ../JourneyToTheClouds-${{ github.ref_name }}-linux64.tar.gz *
+          mkdir -p release/lib
+          find build -name "*.so*" -exec cp {} release/lib/ \;
+          if [ -d "lib" ]; then cp -r lib/* release/lib/ || true; fi
+          cd release && tar -czvf ../PhysBox2D-${{ github.ref_name }}-linux64.tar.gz *
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: JourneyToTheClouds-${{ github.ref_name }}-linux64.tar.gz
+          files: PhysBox2D-${{ github.ref_name }}-linux64.tar.gz
 
   build-macos:
     runs-on: macos-latest
@@ -94,16 +81,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Download SFML
-        run: |
-          curl -L "https://github.com/SFML/SFML/releases/download/3.0.2/SFML-3.0.2-macOS.arm64.tar.gz" -o sfml.tar.gz
-          mkdir -p /Users/runner/SFML
-          tar -xzf sfml.tar.gz -C /Users/runner/SFML --strip-components=1
-
       - name: Configure CMake
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-        env:
-          SFML_DIR: /Users/runner/SFML
 
       - name: Build Release
         run: cmake --build build
@@ -111,12 +90,15 @@ jobs:
       - name: Package Build
         run: |
           mkdir release
-          cp build/JourneyToTheClouds release/
+          cp build/PhysBox2D release/
           cp -r assets release/assets
-          cp -r /Users/runner/SFML/lib release/lib
-          cd release && zip -r ../JourneyToTheClouds-${{ github.ref_name }}-macos-arm64.zip *
+          mkdir -p release/lib
+          find build -name "*.dylib" -exec cp {} release/lib/ \;
+          if [ -d "lib" ]; then cp -r lib/* release/lib/ || true; fi
+          cd release && zip -r ../PhysBox2D-${{ github.ref_name }}-macos-arm64.zip *
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: JourneyToTheClouds-${{ github.ref_name }}-macos-arm64.zip
+          files: PhysBox2D-${{ github.ref_name }}-macos-arm64.zip
+
