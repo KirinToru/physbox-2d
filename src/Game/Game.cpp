@@ -3,7 +3,7 @@
 
 const sf::Time Game::TimePerFrame = sf::seconds(1.f / 60.f);
 
-Game::Game() : mWindow(sf::VideoMode({1280, 720}), "Journey to the Clouds") {
+Game::Game() : mWindow(sf::VideoMode({1280, 720}), "PhysBox 2D") {
   mWindow.setFramerateLimit(60);
   mWindow.setVerticalSyncEnabled(true);
   mStates.push_back(std::make_unique<MenuState>(this));
@@ -103,15 +103,15 @@ void Game::cycleWindowMode() {
 
   switch (mWindowMode) {
   case 0:
-    mWindow.create(sf::VideoMode({1280, 720}), "Journey to the Clouds",
+    mWindow.create(sf::VideoMode({1280, 720}), "PhysBox 2D",
                    sf::Style::Default);
     break;
   case 1:
-    mWindow.create(sf::VideoMode::getDesktopMode(), "Journey to the Clouds",
+    mWindow.create(sf::VideoMode::getDesktopMode(), "PhysBox 2D",
                    sf::Style::None);
     break;
   case 2:
-    mWindow.create(sf::VideoMode::getDesktopMode(), "Journey to the Clouds",
+    mWindow.create(sf::VideoMode::getDesktopMode(), "PhysBox 2D",
                    sf::State::Fullscreen);
     break;
   }

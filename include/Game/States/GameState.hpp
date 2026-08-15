@@ -35,18 +35,4 @@ private:
   sf::Clock mFPSClock;
   int mFrameCount;
   int mCurrentFPS;
-
-  // Smart Reset
-  sf::RectangleShape mFadeOverlay;
-  float mResetTimer;
-  bool mIsResetting;
-
-  // Death Sequence
-  int mDeathPhase; // 0=none, 1=fade out, 2=hold black, 3=fade in
-  float mDeathTimer;
-  sf::Vector2f mDeathPosition;
-
-  // Level System
-  std::vector<std::string> mLevels;
-  int mCurrentLevelIndex;
 };

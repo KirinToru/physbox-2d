@@ -1,4 +1,4 @@
-PROJECT_NAME           = "Journey to the Clouds"
+PROJECT_NAME           = "PhysBox 2D"
 OUTPUT_DIRECTORY       = docs/doxygen
 INPUT                  = src include
 RECURSIVE              = YES

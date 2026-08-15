@@ -1,42 +1,39 @@
 # Technical Roadmap
 
-> Outline of the technical milestones for the Physics and AI overhaul.
+> Outline of the technical milestones for the 2D Physics Sandbox overhaul.
 
 ---
 
-## Phase 1: Custom Physics Engine Development
+## Phase 1: Core Physics & Tools Foundation
 
-- [ ] **Math & Foundation**: Develop custom vector/matrix math required for rigid body dynamics.
-- [ ] **Rigid Body Entities**: Create base classes for physics-enabled objects (Dynamic, Static, Kinematic) with properties like mass, inertia, and velocity.
-- [ ] **Collision Detection**: Implement custom SAT (Separating Axis Theorem) or similar algorithms for rotated box and circle collisions.
-- [ ] **Collision Resolution**: Implement custom impulse-based resolution handling restitution (bounce) and friction.
-- [ ] **World Stepping**: Hook the custom physics simulation into the main game loop's fixed update.
+- [ ] **Engine Update**: Migrate to C++23, CMake 4.4.2, and SFML 3.1.0.
+- [ ] **Physics Engine Integration**: Integrate Box2D v3 into the build system and game loop.
+- [ ] **Physics World Setup**: Initialize the Box2D physics world, define gravity, and handle world stepping.
+- [ ] **Debug Rendering**: Implement Box2D debug drawing to visualize rigid bodies, shapes, and joints in the engine.
 
-## Phase 2: Player & Object Physics Interaction
+## Phase 2: Mouse Controls & Object Interaction
 
-- [ ] **Player Controller Update**: Port the existing kinematic player controller to interact seamlessly with the physics world (applying forces, impulses, or kinematic overriding).
-- [ ] **Pushing & Pulling**: Implement logic for the player to push objects based on mass.
-- [ ] **Weight & Rotation**: Ensure player weight affects dynamic platforms (e.g., standing on edges tips them).
-- [ ] **Material Properties**: Define friction, density, and restitution (bounciness) for different tiles and objects.
-- [ ] **Debug Rendering**: Integrate physics engine debug drawing to visualize rigid bodies and joints.
+- [ ] **Mouse Input System**: Handle mouse clicks, drag, and drop within the game window.
+- [ ] **Physics Picking**: Implement Raycasting or AABB queries via Box2D to select objects on screen.
+- [ ] **Object Spawning**: Create the core "Gun" mechanic that allows players to shoot/spawn objects where they click.
+- [ ] **Object Manipulation**: Allow players to grab, move, and throw physics objects using the mouse.
 
-## Phase 3: AI Monster Baseline & Stealth Mechanics
+## Phase 3: Sandbox Elements & Wind Mechanics
 
-- [ ] **Monster Entity**: Create the base entity for the monster with movement capabilities.
-- [ ] **Vision System**: Implement a Field of View (FOV) and Line of Sight (LoS) checks using raycasting.
-- [ ] **State Machine (Search & Chase)**: Implement AI states. The AI patrols/searches, chases when the player is seen, and investigates the last known location if the player hides.
-- [ ] **15-Second Loop Logic**: Implement the level timer, win/loss conditions, and the reset sequence.
+- [ ] **Dynamic Objects**: Implement various sandbox objects (e.g., squares, circles/balls, rectangles) with correct mass, friction, and restitution.
+- [ ] **Wind System**: Implement a global or localized wind force system. 
+- [ ] **Wind & Player Interaction**: Apply forces to the player character or change max speed depending on if they move with or against the wind.
+- [ ] **Wind & Object Interaction**: Apply wind forces to physics objects based on their properties, making balls roll and lightweight objects fly.
 
-## Phase 4: Machine Learning Integration
+## Phase 4: Garry's Mod Style Spawn Menu
 
-- [x] **AI Model Selection**: Decided on custom Q-Learning implemented from scratch in C++.
-- [ ] **State Representation**: Define the inputs to the AI (relative position to player, obstacles, velocities).
-- [ ] **Action Space**: Define the outputs from the AI (move left, right, jump, dash).
-- [ ] **Reward Function**: Implement the fitness/reward calculation at the end of each round.
-- [ ] **Training Loop**: Hook the AI update step into the game loop and handle model weight adjustments between rounds.
-- [ ] **Save/Load AI Brain**: Allow saving the trained model to disk so the monster's progress persists between game launches.
+- [ ] **UI Overlay System**: Create an in-game UI system capable of rendering a spawn menu.
+- [ ] **Spawn Menu Interface**: Implement a categorized menu showing available objects to spawn.
+- [ ] **Object Selection**: Allow the user to click an object in the menu to equip it to their "Spawner Gun".
+- [ ] **Tool Modes**: (Optional) Add different tools to the menu (e.g., Delete tool, Connect/Joint tool).
 
 ## Phase 5: Polish & Optimization
 
-- [ ] **Performance Profiling**: Ensure physics simulation and AI inference run smoothly within the 16.6ms frame budget (60 FPS).
-- [ ] **Visual Polish**: Add particles, effects, and animations to complement the new physics interactions.
+- [ ] **Visual Polish**: Add sprites and textures to the physics bodies.
+- [ ] **Particle Effects**: Add visual cues for the wind (e.g., wind lines or blowing leaves).
+- [ ] **Performance Profiling**: Ensure physics simulation handles large amounts of spawned blocks smoothly.
