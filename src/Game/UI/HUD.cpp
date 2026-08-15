@@ -5,7 +5,8 @@ HUD::HUD()
       mShowFPS(true),
       mFPSFontLoaded(false),
       mFrameCount(0),
-      mCurrentFPS(0) {
+      mCurrentFPS(0),
+      mPlayerSpeed(0.0f) {
       
   if (mFPSFont.openFromFile("C:/Windows/Fonts/arial.ttf")) {
     mFPSFontLoaded = true;
@@ -30,10 +31,10 @@ void HUD::render(sf::RenderWindow& window) {
   window.setView(window.getDefaultView()); // Draw HUD in screen space
 
   if (mShowFPS && mFPSFontLoaded) {
-    sf::Text fpsText(mFPSFont, "FPS: " + std::to_string(mCurrentFPS), 16);
-    fpsText.setFillColor(sf::Color::Yellow);
-    fpsText.setPosition({10.f, 10.f});
-    window.draw(fpsText);
+    sf::Text infoText(mFPSFont, "FPS: " + std::to_string(mCurrentFPS) + "\nSpeed: " + std::to_string((int)mPlayerSpeed), 16);
+    infoText.setFillColor(sf::Color::Yellow);
+    infoText.setPosition({10.f, 10.f});
+    window.draw(infoText);
   }
 
   window.setView(oldView);
@@ -43,10 +44,18 @@ void HUD::toggleHitbox() {
   mShowHitbox = !mShowHitbox;
 }
 
-void HUD::toggleFPS() {
+void HUD::toggleInfo() {
   mShowFPS = !mShowFPS;
 }
 
 bool HUD::isHitboxVisible() const {
   return mShowHitbox;
+}
+
+bool HUD::isInfoVisible() const {
+  return mShowFPS;
+}
+
+void HUD::setPlayerSpeed(float speed) {
+  mPlayerSpeed = speed;
 }

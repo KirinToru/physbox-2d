@@ -52,7 +52,9 @@ void WindSystem::update(float dtSec, b2WorldId world, const std::vector<b2BodyId
       if (b2Body_IsValid(bodyId)) {
         b2Vec2 pos = b2Body_GetPosition(bodyId);
         if (isExposedToWind(world, pos, {mWindForce.x, mWindForce.y})) {
-          b2Body_ApplyForceToCenter(bodyId, {mWindForce.x, mWindForce.y}, true);
+          float mass = b2Body_GetMass(bodyId);
+          // Scale wind force by mass so heavy objects (like the player) still move
+          b2Body_ApplyForceToCenter(bodyId, {mWindForce.x * mass * 0.5f, mWindForce.y * mass * 0.5f}, true);
         }
       }
     }

@@ -3,13 +3,14 @@
 #include <SFML/System/Vector2.hpp>
 
 struct MovementSettings {
-    float maxSpeed = 5.5f;
-    float maxAirSpeed = 5.5f; // Same as ground speed for full air strafing in 2D
-    float groundAcceleration = 75.0f; // Snappier ground control
-    float airAcceleration = 200.0f; // High to allow snappy air turns
-    float friction = 4.0f;
-    float stopSpeed = 2.0f;
-    float jumpImpulse = 7.9f; // Higher impulse to counteract higher gravity while keeping the same height
+    float maxSpeed = 7.0f;
+    float maxAirSpeed = 7.0f;
+    float bhopSpeedLimit = 15.0f; // Max absolute speed allowed
+    float groundAcceleration = 6.5f; // Must be slightly > friction for smooth, slow wind-up (was 14.0)
+    float airAcceleration = 100.0f; // High for snappy air turns
+    float friction = 6.0f; // Higher friction to reduce sliding (was 4.0f)
+    float stopSpeed = 4.0f; // Higher stop speed to snap to zero (was 2.0f)
+    float jumpImpulse = 11.0f; // Jump higher (was 7.9f)
 };
 
 class SourceMovementController2D {

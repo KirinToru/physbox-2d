@@ -28,7 +28,7 @@ public:
 private:
   bool mIsOpen;
   
-  sf::Font mFont;
+  const sf::Font* mFontPtr = nullptr;
   
   std::string mInputBuffer;
   std::vector<std::string> mLog;
@@ -37,16 +37,13 @@ private:
   sf::RectangleShape mTitleBar;
   sf::RectangleShape mInputBackground;
   
-  std::optional<sf::Text> mInputText;
-  std::optional<sf::Text> mLogText;
-
-  std::function<void(const std::string&)> mCommandCallback;
-  
   float mCursorBlinkTimer;
   bool mShowCursor;
   
   bool mIsDragging;
   sf::Vector2f mDragOffset;
+
+  std::function<void(const std::string&)> mCommandCallback;
   
   void updateLayout();
 };

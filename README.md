@@ -2,12 +2,12 @@
 <h3 align="center">A 2D Physics Sandbox Game</h3>
 <p align="center">
 <img src="https://img.shields.io/badge/C++-23-00599C?style=flat-square&logo=c%2B%2B">
-<img src="https://img.shields.io/badge/SFML-v3.1.0-8CC445?logo=SFML&style=flat-square">
-<img src="https://img.shields.io/badge/Box2D-v3.0-blue?style=flat-square">
+<img src="https://img.shields.io/badge/SFML-v4.4.2-8CC445?logo=SFML&style=flat-square">
+<img src="https://img.shields.io/badge/Box2D-v3.1.1-blue?style=flat-square">
 <a href="LICENSE"><img src="https://img.shields.io/badge/license-Source%20Available-informational?style=flat-square"/></a>
 </p>
 
-PhysBox 2D is a two-dimentional physics-based sandbox game. It features rigid body dynamics, wind simulation, and interactive object spawning. Built with C++23, SFML 3.1.0, and Box2D v3.
+PhysBox 2D is a two-dimentional physics-based sandbox game. It features rigid body dynamics, wind simulation, and interactive object spawning. Built with C++23, SFML 4.4.2, and Box2D v3.1.1.
 
 ### Contents
 
@@ -26,31 +26,15 @@ PhysBox 2D is a two-dimentional physics-based sandbox game. It features rigid bo
 - **Interactive Sandbox:** A spawn menu allowing players to select and drop various physical objects into the world using the mouse.
 - **Wind Simulation:** Environmental wind forces that realistically affect player movement and physics objects based on their mass and properties.
 
-## Controls
-
-| Key / Mouse | Action |
-|-------------|--------|
-| **A / D** | Move left / right |
-| **W** | Look / Dash up |
-| **Space** | Jump |
-| **Shift** | Dash |
-| **S** | Drop through platforms / Fast wall slide |
-| **Mouse Click** | Spawn selected object / Interact (Spawngun) |
-| **R (hold)** | Smart reset |
-| **F1** | Toggle hitbox display |
-| **F2** | Toggle Developer HUD |
-| **F4** | Cycle window mode |
-| **Alt+F4** | Close game |
-| **Esc** | Pause / Exit |
+## [Controls](docs/controls.jpg)
 
 ## Tech Stack
 
 | Category | Tool |
 |----------|------|
 | Standard | C++23 |
-| IDE | Visual Studio Code, Antigravity IDE |
 | Build System | CMake 4.4.2 |
-| Libraries | SFML 3.1.0, Box2D v3 |
+| Libraries | SFML 3.1.0, Box2D v3.1.1 |
 | Platform | Windows x64, Linux, macOS |
 
 ## Build

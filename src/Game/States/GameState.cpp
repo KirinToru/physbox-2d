@@ -47,6 +47,22 @@ GameState::GameState(Game *game)
       } else {
         mGame->getConsole().addLog("Usage: wind <x> <y>");
       }
+    } else if (cmd == "autojump") {
+      int val;
+      if (iss >> val) {
+        mPlayer.setAutoJump(val != 0);
+        mGame->getConsole().addLog("Autojump set to " + std::to_string(val != 0));
+      } else {
+        mGame->getConsole().addLog("Usage: autojump <0|1>");
+      }
+    } else if (cmd == "info") {
+      int val;
+      if (iss >> val) {
+        if ((val != 0) != mHUD.isInfoVisible()) mHUD.toggleInfo();
+        mGame->getConsole().addLog("Info set to " + std::to_string(val != 0));
+      } else {
+        mGame->getConsole().addLog("Usage: info <0|1>");
+      }
     } else if (cmd == "clear") {
       mGame->getConsole().clearLog();
     } else if (cmd == "help") {
@@ -55,6 +71,8 @@ GameState::GameState(Game *game)
       mGame->getConsole().addLog("  clear          - Clear the console history");
       mGame->getConsole().addLog("  gravity <x> <y> - Set the world gravity forces");
       mGame->getConsole().addLog("  wind <x> <y>   - Set global wind force");
+      mGame->getConsole().addLog("  autojump <0|1> - Toggle auto-bunnyhop");
+      mGame->getConsole().addLog("  info <0|1>     - Toggle FPS and speed display");
     } else {
       mGame->getConsole().addLog("Unknown command: " + cmd);
     }
@@ -127,13 +145,6 @@ void GameState::handleInput(sf::Event &event) {
       mGame->getConsole().toggle();
     }
     
-    if (keyPress->code == sf::Keyboard::Key::F1) {
-      mHUD.toggleHitbox();
-    }
-    if (keyPress->code == sf::Keyboard::Key::F2) {
-      mHUD.toggleFPS();
-    }
-    
     if (keyPress->code == sf::Keyboard::Key::Q && !mGame->getConsole().isOpen()) {
       mSpawnMenu.setOpen(!mSpawnMenu.isOpen());
     }
@@ -164,6 +175,8 @@ void GameState::handleInput(sf::Event &event) {
 void GameState::update(sf::Time dt) {
   float dtSec = dt.asSeconds();
   
+  sf::Vector2f vel = mPlayer.getVelocity();
+  mHUD.setPlayerSpeed(std::abs(vel.x)); // Pass horizontal speed to HUD
   mHUD.update(dt);
 
   if (!mGame->getConsole().isOpen()) {
@@ -171,9 +184,12 @@ void GameState::update(sf::Time dt) {
     const float fixedDt = 1.0f / 60.0f;
     mPhysicsAccumulator += dtSec;
     while (mPhysicsAccumulator >= fixedDt) {
-      mWindSystem.update(fixedDt, mWorld, mObjectManager.getBodies());
+      std::vector<b2BodyId> windBodies = mObjectManager.getBodies();
+      windBodies.push_back(mPlayer.getBody());
+      mWindSystem.update(fixedDt, mWorld, windBodies);
+      
       mPlayer.update(fixedDt);
-      b2World_Step(mWorld, fixedDt, 4);
+      b2World_Step(mWorld, fixedDt, 12);
       mPhysicsAccumulator -= fixedDt;
     }
     mMouseInteraction.update(dtSec, mGame->getWindow(), mCamera);

@@ -17,8 +17,13 @@ public:
 
   void applyForce(sf::Vector2f force);
 
+  void setAutoJump(bool enabled);
+  bool isAutoJumpEnabled() const;
+
   sf::Vector2f getPosition() const;
   sf::Vector2f getVelocity() const;
+  
+  b2BodyId getBody() const { return mBody; }
 
 private:
   sf::RectangleShape shape;
@@ -45,4 +50,5 @@ private:
   float dashCooldownTimer;
   bool isDashing;
   bool hasAirDash;
+  bool mAutoJumpEnabled = false;
 };

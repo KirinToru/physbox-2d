@@ -12,9 +12,12 @@ public:
   void render(sf::RenderWindow& window);
 
   void toggleHitbox();
-  void toggleFPS();
+  void toggleInfo();
   
   bool isHitboxVisible() const;
+  bool isInfoVisible() const;
+
+  void setPlayerSpeed(float speed);
 
 private:
   bool mShowHitbox;
@@ -25,4 +28,5 @@ private:
   sf::Clock mFPSClock;
   int mFrameCount;
   int mCurrentFPS;
+  float mPlayerSpeed;
 };

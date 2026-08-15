@@ -9,11 +9,10 @@ Game::Game() : mWindow(sf::VideoMode({1280, 720}), "PhysBox 2D") {
   mWindow.setFramerateLimit(60);
   mWindow.setVerticalSyncEnabled(true);
   
-  sf::Font consoleFont;
-  if (!consoleFont.openFromFile("assets/fonts/trebuc.ttf")) {
+  if (!mConsoleFont.openFromFile("assets/fonts/trebuc.ttf")) {
     std::cerr << "Failed to load font for DevConsole!" << std::endl;
   }
-  mConsole.init(consoleFont);
+  mConsole.init(mConsoleFont);
   
   mStates.push_back(std::make_unique<MenuState>(this));
 }
@@ -115,6 +114,9 @@ void Game::processEvents() {
 void Game::update(sf::Time dt) {
   if (!mStates.empty())
     mStates.back()->update(dt);
+    
+  if (mConsole.isOpen())
+    mConsole.update(dt.asSeconds());
 }
 
 void Game::render() {

@@ -6,7 +6,6 @@ DevConsole::DevConsole() : mIsOpen(false), mCursorBlinkTimer(0.f), mShowCursor(t
 }
 
 void DevConsole::init(const sf::Font& font) {
-  mFont = font;
 
   mBackground.setFillColor(sf::Color(0, 0, 0, 220));
   mBackground.setSize({800.f, 400.f});
@@ -22,13 +21,7 @@ void DevConsole::init(const sf::Font& font) {
   mInputBackground.setFillColor(sf::Color(50, 50, 50, 255));
   mInputBackground.setSize({800.f, 30.f});
 
-  mInputText.emplace(mFont, "", 16);
-  mInputText->setFillColor(sf::Color::White);
-
-  mLogText.emplace(mFont, "", 14);
-  mLogText->setFillColor(sf::Color(200, 200, 200));
-  
-  updateLayout();
+  mFontPtr = &font;
   
   addLog("PhysBox 2D Developer Console initialized.");
   addLog("Type 'help' for a list of commands.");
@@ -38,8 +31,6 @@ void DevConsole::updateLayout() {
   auto pos = mBackground.getPosition();
   mTitleBar.setPosition({pos.x, pos.y - 30.f});
   mInputBackground.setPosition({pos.x, pos.y + 400.f - 30.f});
-  mInputText->setPosition({pos.x + 10.f, pos.y + 400.f - 25.f});
-  mLogText->setPosition({pos.x + 10.f, pos.y + 10.f});
 }
 
 void DevConsole::handleEvent(const sf::Event& event, const sf::RenderWindow& window) {
@@ -104,17 +95,7 @@ void DevConsole::update(float dt) {
     mCursorBlinkTimer = 0.f;
   }
 
-  std::string displayStr = mInputBuffer;
-  if (mShowCursor) displayStr += "_";
-  if (mInputText) mInputText->setString(displayStr);
-
-  // Build log string (showing last 15 lines)
-  std::string logStr;
-  size_t start = mLog.size() > 15 ? mLog.size() - 15 : 0;
-  for (size_t i = start; i < mLog.size(); ++i) {
-    logStr += mLog[i] + "\n";
-  }
-  if (mLogText) mLogText->setString(logStr);
+  // mLog text building happens in render() now
 }
 
 void DevConsole::render(sf::RenderWindow& window) {
@@ -127,8 +108,27 @@ void DevConsole::render(sf::RenderWindow& window) {
   window.draw(mBackground);
   window.draw(mTitleBar);
   window.draw(mInputBackground);
-  if (mLogText) window.draw(*mLogText);
-  if (mInputText) window.draw(*mInputText);
+  
+  if (mFontPtr) {
+    std::string logStr;
+    size_t start = mLog.size() > 15 ? mLog.size() - 15 : 0;
+    for (size_t i = start; i < mLog.size(); ++i) {
+      logStr += mLog[i] + "\n";
+    }
+    
+    sf::Text logText(*mFontPtr, logStr, 14);
+    logText.setFillColor(sf::Color(200, 200, 200));
+    auto pos = mBackground.getPosition();
+    logText.setPosition({pos.x + 5.f, pos.y + 5.f});
+    window.draw(logText);
+    
+    std::string displayStr = mInputBuffer;
+    if (mShowCursor) displayStr += "_";
+    sf::Text inputText(*mFontPtr, displayStr, 16);
+    inputText.setFillColor(sf::Color::White);
+    inputText.setPosition({pos.x + 5.f, pos.y + 400.f - 25.f});
+    window.draw(inputText);
+  }
 
   window.setView(oldView);
 }

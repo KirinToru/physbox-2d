@@ -38,6 +38,7 @@ private:
   sf::Context mContext;
   DevConsole mConsole;
   bool mConsoleOpenedFromGame = false;
+  sf::Font mConsoleFont;
   std::vector<std::unique_ptr<State>> mStates;
 
   static const sf::Time TimePerFrame;

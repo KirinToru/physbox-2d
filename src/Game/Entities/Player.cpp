@@ -38,8 +38,8 @@ void Player::init(b2WorldId world, sf::Vector2f position, float P2M) {
   b2Polygon playerBox = b2MakeRoundedBox(12.f / 2.f / P2M, 28.f / 2.f / P2M, 2.f / P2M);
   
   b2ShapeDef shapeDef = b2DefaultShapeDef();
-  shapeDef.density = 2.0f;
-  shapeDef.material.friction = 0.0f; // Zero friction to prevent wall climbing
+  shapeDef.density = 10.0f; // High density to give player enough mass to push objects
+  shapeDef.material.friction = 0.0f; // Player uses custom friction
   shapeDef.material.restitution = 0.0f;
   
   b2CreatePolygonShape(mBody, &shapeDef, &playerBox);
@@ -57,31 +57,35 @@ void Player::update(float dtSec) {
                sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D);
   bool jumpPressed = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space);
   
-  // Ground check via 3 raycasts downward from feet (left, center, right)
   b2Vec2 pos = b2Body_GetPosition(mBody);
-  float halfHeight = 28.f / 2.f / mP2M;
-  float halfWidth = 10.f / 2.f / mP2M; // Slightly less than actual width (12.f) to not catch walls
-  
-  b2Vec2 rayTranslation = {0.0f, 4.0f / mP2M}; // Cast 4 pixels down
-  b2QueryFilter filter = b2DefaultQueryFilter();
-  
-  b2Pos origins[3] = {
-    {pos.x - halfWidth, pos.y + halfHeight},
-    {pos.x, pos.y + halfHeight},
-    {pos.x + halfWidth, pos.y + halfHeight}
-  };
   
   isGrounded = false;
-  for (int i = 0; i < 3; ++i) {
-    b2RayResult rayResult = b2World_CastRayClosest(mWorld, origins[i], rayTranslation, filter);
-    if (rayResult.hit && !B2_ID_EQUALS(b2Shape_GetBody(rayResult.shapeId), mBody)) {
-      isGrounded = true;
-      break;
+  int capacity = b2Body_GetContactCapacity(mBody);
+  if (capacity > 0) {
+    std::vector<b2ContactData> contacts(capacity);
+    int count = b2Body_GetContactData(mBody, contacts.data(), capacity);
+    for (int i = 0; i < count; ++i) {
+      // We only care about touching contacts
+      if (contacts[i].manifold.pointCount > 0) {
+        b2Vec2 normal = contacts[i].manifold.normal;
+        bool bodyIsA = B2_ID_EQUALS(b2Shape_GetBody(contacts[i].shapeIdA), mBody);
+        
+        // normal points from A to B.
+        // If player is A, normal points from player to ground (down -> positive Y)
+        // If player is B, normal points from ground to player (up -> negative Y)
+        float dotDown = bodyIsA ? normal.y : -normal.y;
+        
+        // If dotDown > 0.7 (roughly 45 degrees), it's ground
+        if (dotDown > 0.7f) {
+          isGrounded = true;
+          break;
+        }
+      }
     }
   }
   
   jumpedThisFrame = false;
-  if (jumpPressed && isGrounded && !mJumpHeld) {
+  if (jumpPressed && isGrounded && (!mJumpHeld || mAutoJumpEnabled)) {
     velocity.y = -movementController.settings.jumpImpulse;
     jumpedThisFrame = true;
   }
@@ -151,4 +155,12 @@ sf::Vector2f Player::getVelocity() const {
 
 void Player::applyForce(sf::Vector2f force) {
   b2Body_ApplyForceToCenter(mBody, {force.x, force.y}, true);
+}
+
+void Player::setAutoJump(bool enabled) {
+  mAutoJumpEnabled = enabled;
+}
+
+bool Player::isAutoJumpEnabled() const {
+  return mAutoJumpEnabled;
 }

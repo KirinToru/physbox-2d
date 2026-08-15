@@ -50,9 +50,38 @@ void SourceMovementController2D::accelerate(b2Vec2& velocity, b2Vec2 wishDir, fl
 }
 
 void SourceMovementController2D::airMove(b2Vec2& velocity, b2Vec2 wishDir, float dt) {
+    // If the player changes direction in the air, flip the velocity to simulate a 180 degree air-strafe U-turn.
+    // This preserves their absolute speed instead of slowing them down.
+    if (wishDir.x != 0 && velocity.x * wishDir.x < 0) {
+        velocity.x = -velocity.x;
+    }
+
+    // In Source, wishSpeed for air is capped to a small value (e.g. 30 units) compared to maxSpeed (320)
+    // This allows the acceleration to work properly when turning. 
+    // In 2D, we cap it similarly (about 10% of max speed)
     float wishSpeed = settings.maxAirSpeed;
-    // We can allow wishDir to be arbitrary if mouse aiming is used, but for now it's just X
-    accelerate(velocity, wishDir, wishSpeed, settings.airAcceleration, dt);
+    float airCap = settings.maxSpeed * 0.1f; 
+    wishSpeed = std::min(wishSpeed, airCap);
+
+    float currentSpeed = velocity.x * wishDir.x;
+    float addSpeed = wishSpeed - currentSpeed;
+
+    if (addSpeed <= 0) {
+        // 2D Bhop hack: since we can't turn the mouse to bypass the projection cap, 
+        // we artificially grant a small speed boost if they hold the direction they are moving.
+        // This simulates perfect air-strafing. Constant 5.0 m/s^2 boost.
+        if (std::abs(velocity.x) < settings.bhopSpeedLimit) {
+            velocity.x += wishDir.x * 5.0f * dt;
+        }
+        return;
+    }
+
+    float accelSpeed = settings.airAcceleration * dt * wishSpeed;
+    if (accelSpeed > addSpeed) {
+        accelSpeed = addSpeed;
+    }
+
+    velocity.x += accelSpeed * wishDir.x;
 }
 
 void SourceMovementController2D::groundMove(b2Vec2& velocity, b2Vec2 wishDir, float dt, bool jumpedThisFrame) {
