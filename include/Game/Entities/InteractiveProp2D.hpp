@@ -14,7 +14,14 @@ struct PropPhysicsSettings {
 
 class InteractiveProp2D {
 public:
-    void init(b2WorldId world, sf::Vector2f position, sf::Vector2f size, float P2M, const PropPhysicsSettings& settings, bool isCircle = false);
+    enum class ShapeType {
+        Box,
+        Circle,
+        Triangle,
+        Star
+    };
+
+    void init(b2WorldId world, sf::Vector2f position, sf::Vector2f size, float P2M, const PropPhysicsSettings& settings, ShapeType shapeType = ShapeType::Box);
     
     // Method to calculate impact damage on collision
     float calculateImpactDamage(const b2Vec2& impactVelocity) const;

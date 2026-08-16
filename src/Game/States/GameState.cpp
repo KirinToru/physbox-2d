@@ -163,6 +163,10 @@ void GameState::handleInput(sf::Event &event) {
         mObjectManager.spawnBox(mWorld, worldPos, 50.0f);
       } else if (mSpawnMenu.getSelectedItem() == SpawnMenu::ItemType::Ball) {
         mObjectManager.spawnBall(mWorld, worldPos, 50.0f);
+      } else if (mSpawnMenu.getSelectedItem() == SpawnMenu::ItemType::Triangle) {
+        mObjectManager.spawnTriangle(mWorld, worldPos, 50.0f);
+      } else if (mSpawnMenu.getSelectedItem() == SpawnMenu::ItemType::Star) {
+        mObjectManager.spawnStar(mWorld, worldPos, 50.0f);
       }
     }
   }
@@ -177,6 +181,7 @@ void GameState::update(sf::Time dt) {
   
   sf::Vector2f vel = mPlayer.getVelocity();
   mHUD.setPlayerSpeed(std::abs(vel.x)); // Pass horizontal speed to HUD
+  mHUD.setEntityCount(mObjectManager.getBodies().size() + 1); // +1 for player
   mHUD.update(dt);
 
   if (!mGame->getConsole().isOpen()) {
@@ -186,7 +191,7 @@ void GameState::update(sf::Time dt) {
     while (mPhysicsAccumulator >= fixedDt) {
       std::vector<b2BodyId> windBodies = mObjectManager.getBodies();
       windBodies.push_back(mPlayer.getBody());
-      mWindSystem.update(fixedDt, mWorld, windBodies);
+      mWindSystem.update(fixedDt, mWorld, windBodies, mCamera);
       
       mPlayer.update(fixedDt);
       b2World_Step(mWorld, fixedDt, 12);

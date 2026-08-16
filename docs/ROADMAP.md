@@ -6,10 +6,10 @@
 
 ## Phase 1: Core Physics & Tools Foundation
 
-- [ ] **Engine Update**: Migrate to C++23, CMake 4.4.2, and SFML 3.1.0.
-- [ ] **Physics Engine Integration**: Integrate Box2D v3 into the build system and game loop.
-- [ ] **Physics World Setup**: Initialize the Box2D physics world, define gravity, and handle world stepping.
-- [ ] **Debug Rendering**: Implement Box2D debug drawing to visualize rigid bodies, shapes, and joints in the engine.
+- [x] **Engine Update**: Migrate to C++23, CMake 4.4.2, and SFML 3.1.0.
+- [x] **Physics Engine Integration**: Integrate Box2D v3 into the build system and game loop.
+- [x] **Physics World Setup**: Initialize the Box2D physics world, define gravity, and handle world stepping.
+- [x] **Debug Rendering**: Implement Box2D debug drawing to visualize rigid bodies, shapes, and joints in the engine.
 
 ## Phase 2: Mouse Controls & Object Interaction
 
@@ -39,3 +39,12 @@
 - [x] **Input & Coordinate Handling**: Ensure UI correctly handles mouse mapping across different window scales and fullscreen modes.
 - [ ] **Particle Effects**: Add visual cues for the wind (e.g., wind lines or blowing leaves).
 - [ ] **Performance Profiling**: Ensure physics simulation handles large amounts of spawned blocks smoothly.
+
+## Phase 6: Audio & Props
+- [x] **UI Sounds**: Add hover and click sounds for UI buttons in Menu and Pause screens.
+- [ ] **Game Sounds**: Add background music, and collision/interaction sounds for objects.
+- [x] **New Objects**: Add specific sound profiles to objects (bouncy ball, wooden crate, steel triangle) and add a new Light Star object.
+
+## Phase 7: Gravity Gun & Maps
+- [ ] **Gravity Gun Beam**: Add a visual bending beam from the player to the held object, and a blue glowing outline around the selected object.
+- [ ] **Map System (TMX)**: Reintroduce the map selection list and TMX map format loading.

@@ -18,6 +18,8 @@ public:
   bool isInfoVisible() const;
 
   void setPlayerSpeed(float speed);
+  void setEntityCount(int count);
+  void setFrameTime(float ms);
 
 private:
   bool mShowHitbox;
@@ -29,4 +31,6 @@ private:
   int mFrameCount;
   int mCurrentFPS;
   float mPlayerSpeed;
+  int mEntityCount;
+  float mFrameTimeMs;
 };

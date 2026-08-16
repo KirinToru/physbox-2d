@@ -141,14 +141,17 @@ void PauseState::handleInput(sf::Event &event) {
 
       if (mPopupOpen) {
           if (mPopupCloseButton->contains(mousePos)) {
+              Button::playClickSound();
               mPopupOpen = false;
           }
           if (mPopupType == PopupType::Options && mPopupWindowModeButton->contains(mousePos)) {
+              Button::playClickSound();
               mGame->cycleWindowMode();
           }
       }
       
       if (mSelectedOptionIndex >= 0 && mButtons[mSelectedOptionIndex].contains(mousePos)) {
+          Button::playClickSound();
           if (mSelectedOptionIndex == 0) // Resume Game
             mGame->popState();
           else if (mSelectedOptionIndex == 1) { // Disconnect -> go to menu

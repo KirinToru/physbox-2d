@@ -60,6 +60,8 @@ void Player::update(float dtSec) {
   b2Vec2 pos = b2Body_GetPosition(mBody);
   
   isGrounded = false;
+  b2Vec2 groundNormal = {0.0f, 1.0f};
+  
   int capacity = b2Body_GetContactCapacity(mBody);
   if (capacity > 0) {
     std::vector<b2ContactData> contacts(capacity);
@@ -72,12 +74,13 @@ void Player::update(float dtSec) {
         
         // normal points from A to B.
         // If player is A, normal points from player to ground (down -> positive Y)
-        // If player is B, normal points from ground to player (up -> negative Y)
-        float dotDown = bodyIsA ? normal.y : -normal.y;
+        b2Vec2 nDown = bodyIsA ? normal : b2Vec2{-normal.x, -normal.y};
+        float dotDown = nDown.y;
         
-        // If dotDown > 0.7 (roughly 45 degrees), it's ground
-        if (dotDown > 0.7f) {
+        // If dotDown > 0.5 (roughly 60 degrees), it's ground
+        if (dotDown > 0.5f) {
           isGrounded = true;
+          groundNormal = nDown;
           break;
         }
       }
@@ -103,6 +106,12 @@ void Player::update(float dtSec) {
   
   if (isGrounded) {
     movementController.groundMove(velocity, wishDir, dtSec, jumpedThisFrame);
+    
+    // Project horizontal velocity onto the slope so we climb it without losing speed
+    float sepVel = velocity.x * groundNormal.x + velocity.y * groundNormal.y;
+    if (!jumpedThisFrame && std::abs(groundNormal.x) > 0.01f && sepVel > -1.0f) {
+        velocity.y = velocity.x * (-groundNormal.x / groundNormal.y);
+    }
   } else {
     movementController.airMove(velocity, wishDir, dtSec);
   }

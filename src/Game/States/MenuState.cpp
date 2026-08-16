@@ -143,15 +143,18 @@ void MenuState::handleInput(sf::Event &event) {
 
       if (mPopupOpen) {
           if (mPopupCloseButton->contains(mousePos)) {
+              Button::playClickSound();
               mPopupOpen = false;
           }
           if (mPopupType == PopupType::Options && mPopupWindowModeButton->contains(mousePos)) {
+              Button::playClickSound();
               mGame->cycleWindowMode();
           }
       }
       
       // Allow clicking background buttons
       if (mSelectedOptionIndex >= 0 && mButtons[mSelectedOptionIndex].contains(mousePos)) {
+          Button::playClickSound();
           if (mSelectedOptionIndex == 0)
             mGame->changeState(std::make_unique<GameState>(mGame));
           else if (mSelectedOptionIndex == 1) { // Load Game

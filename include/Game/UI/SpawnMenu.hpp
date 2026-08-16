@@ -5,7 +5,7 @@
 
 class SpawnMenu {
 public:
-  enum class ItemType { None, Box, Ball };
+  enum class ItemType { None, Box, Ball, Triangle, Star };
 
   SpawnMenu();
   void init(const sf::Font& font);
@@ -28,9 +28,10 @@ private:
   
   struct MenuItem {
     ItemType type;
-    bool isCircle;
+    int shapeType; // 0 = rect, 1 = circle, 2 = convex
     sf::RectangleShape bounds;
     sf::CircleShape circleBounds;
+    sf::ConvexShape convexBounds;
     sf::Text label;
   };
   
